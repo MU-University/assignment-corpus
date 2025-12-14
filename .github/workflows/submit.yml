@@ -73,13 +73,13 @@ jobs:
           ASSIGN: ${{ inputs.repo }}
         run: |
           set -e
-          mkdir -p "submission/${OWNER}/${ASSIGN}/src/main/java"
+          mkdir -p "submission/${ASSIGN}/${OWNER}/src/main/java"
           rsync -a --delete "student/src/main/java/" "submission/${ASSIGN}/${OWNER}/src/main/java/"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "submission/${OWNER}/${ASSIGN}"
+          git add "submission/${ASSIGN}/${OWNER}"
           if ! git diff --cached --quiet; then
-            git commit -m "Stage submission for ${OWNER}/${ASSIGN}"
+            git commit -m "Stage submission for ${ASSIGN}/${OWNER}"
             git push
           else
             echo "No changes to commit."
@@ -102,7 +102,7 @@ jobs:
           ASSIGN: ${{ inputs.repo }}
         run: |
           java -jar ./lib/jplag.jar \
-            "submission/${OWNER}/${ASSIGN}" \
+            "submission/${ASSIGN}/${OWNER}" \
             -l java \
             -s "src/main/java" \
             -r "results/${ASSIGN}-${OWNER}"
