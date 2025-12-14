@@ -85,18 +85,36 @@ jobs:
             echo "No changes to commit."
           fi
 
+      - name: Check submission count
+        id: count
+        env:
+          ASSIGN: ${{ inputs.repo }}
+        run: |
+          set -e
+          SUB_DIR="submission/${ASSIGN}"
+          count=$(find "${SUB_DIR}" -mindepth 1 -maxdepth 1 -type d | wc -l || echo 0)
+          echo "Found ${count} submission folders in ${SUB_DIR}"
+          if [ "${count}" -ge 2 ]; then
+            echo "run_jplag=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_jplag=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Java
+        if: ${{ steps.count.outputs.run_jplag == 'true' }}
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
       - name: Download JPlag
+        if: ${{ steps.count.outputs.run_jplag == 'true' }}
         run: |
           mkdir -p lib results
           curl -L -o lib/jplag.jar https://github.com/jplag/JPlag/releases/download/v4.2.0/jplag-4.2.0-jar-with-dependencies.jar
 
       - name: Run JPlag on staged submission
+        if: ${{ steps.count.outputs.run_jplag == 'true' }}
         env:
           OWNER: ${{ inputs.owner }}
           ASSIGN: ${{ inputs.repo }}
@@ -107,6 +125,7 @@ jobs:
             -r "results/${ASSIGN}-${OWNER}"
 
       - name: Upload JPlag results
+        if: ${{ steps.count.outputs.run_jplag == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: jplag-results-${{ inputs.owner }}-${{ inputs.repo }}
