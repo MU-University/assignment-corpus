@@ -74,7 +74,7 @@ jobs:
         run: |
           set -e
           mkdir -p "submission/${OWNER}/${ASSIGN}/src/main/java"
-          rsync -a --delete "student/src/main/java/" "submission/${OWNER}/${ASSIGN}/src/main/java/"
+          rsync -a --delete "student/src/main/java/" "submission/${ASSIGN}/${OWNER}/src/main/java/"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "submission/${OWNER}/${ASSIGN}"
@@ -105,8 +105,7 @@ jobs:
             "submission/${OWNER}/${ASSIGN}" \
             -l java \
             -s "src/main/java" \
-            -x "**/src/test/**" \
-            -r "results/${OWNER}-${ASSIGN}"
+            -r "results/${ASSIGN}-${OWNER}"
 
       - name: Upload JPlag results
         uses: actions/upload-artifact@v4
