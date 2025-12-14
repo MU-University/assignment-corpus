@@ -5,15 +5,22 @@ on:
   workflow_call:
     inputs:
       assignment:
+        description: Assignment id
         required: true
         type: string
+        default: sample-assignment
       owner:
+        description: GitHub org or user
         required: true
         type: string
+        default: MU-University
       repo:
+        description: Student repository
         required: true
         type: string
+        default: student2-corpus
       ref:
+        description: Branch or tag in student repo
         required: false
         type: string
         default: master
@@ -32,13 +39,9 @@ jobs:
           ref: main
 
       - name: Clone student repo (public)
-        env:
-          OWNER: ${{ inputs.owner }}
-          REPO: ${{ inputs.repo }}
-          REF: ${{ inputs.ref }}
         run: |
           set -e
-          git clone --depth=1 -b "$REF" "https://github.com/${REPO}.git" student
+          git clone --depth=1 -b "${{ inputs.ref }}" "https://github.com/${{ inputs.owner }}/${{ inputs.repo }}.git" student
           test -d "student/src/main/java"
 
       - name: Stage submission into corpus
