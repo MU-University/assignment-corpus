@@ -24,6 +24,28 @@ on:
         required: false
         type: string
         default: master
+  workflow_dispatch:
+    inputs:
+      assignment:
+        description: Assignment id
+        required: true
+        type: string
+        default: sample-assignment
+      owner:
+        description: GitHub org or user
+        required: true
+        type: string
+        default: MU-University
+      repo:
+        description: Student repository
+        required: true
+        type: string
+        default: student2-corpus
+      ref:
+        description: Branch or tag in student repo
+        required: false
+        type: string
+        default: master
 
 permissions:
   contents: write
