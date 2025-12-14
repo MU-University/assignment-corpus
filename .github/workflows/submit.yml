@@ -104,7 +104,6 @@ jobs:
           java -jar ./lib/jplag.jar \
             "submission/${ASSIGN}/${OWNER}" \
             -l java \
-            -s "src/main/java" \
             -r "results/${ASSIGN}-${OWNER}"
 
       - name: Upload JPlag results
