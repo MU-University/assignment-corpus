@@ -35,7 +35,7 @@ jobs:
           REF: ${{ inputs.ref }}
         run: |
           set -e
-          git clone --depth=1 -b "$REF" "https://github.com/${OWNER}/${REPO}.git" student
+          git clone --depth=1 -b "$REF" "https://github.com/${REPO}.git" student
           test -d "student/src/main/java"
 
       - name: Stage submission into corpus
