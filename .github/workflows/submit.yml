@@ -1,0 +1,84 @@
+# File: '.github/workflows/submit.yml' in the corpus repo
+name: Submit Assignment (Corpus)
+
+on:
+  workflow_call:
+    inputs:
+      assignment:
+        required: true
+        type: string
+      owner:
+        required: true
+        type: string
+      repo:
+        required: true
+        type: string
+      ref:
+        required: false
+        type: string
+        default: master
+
+jobs:
+  stage-and-jplag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout corpus
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          ref: master
+
+      - name: Clone student repo (public)
+        env:
+          OWNER: ${{ inputs.owner }}
+          REPO: ${{ inputs.repo }}
+          REF: ${{ inputs.ref }}
+        run: |
+          set -e
+          git clone --depth=1 -b "$REF" "https://github.com/${OWNER}/${REPO}.git" student
+          test -d "student/src/main/java"
+
+      - name: Stage submission into corpus
+        env:
+          ASSIGN: ${{ inputs.assignment }}
+        run: |
+          set -e
+          mkdir -p "submission/${ASSIGN}/src/main/java"
+          rsync -a --delete "student/src/main/java/" "submission/${ASSIGN}/src/main/java/"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "submission/${ASSIGN}"
+          if ! git diff --cached --quiet; then
+            git commit -m "Stage submission for ${ASSIGN}"
+            git push
+          else
+            echo "No changes to commit."
+          fi
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Download JPlag
+        run: |
+          mkdir -p lib results
+          curl -L -o lib/jplag.jar https://github.com/jplag/JPlag/releases/download/v4.2.0/jplag-4.2.0-jar-with-dependencies.jar
+
+      - name: Run JPlag on staged submission
+        env:
+          ASSIGN: ${{ inputs.assignment }}
+        run: |
+          java -jar ./lib/jplag.jar \
+            "submission/${ASSIGN}" \
+            -l java \
+            --subdirectory "src/main/java" \
+            -x "**/src/test/**" \
+            -r "results/${ASSIGN}"
+
+      - name: Upload JPlag results
+        uses: actions/upload-artifact@v4
+        with:
+          name: jplag-results-${{ inputs.assignment }}
+          path: results
