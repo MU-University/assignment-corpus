@@ -1,4 +1,4 @@
-# File: '.github/workflows/submit.yml' in the corpus repo
+# yaml
 name: Submit Assignment (Corpus)
 
 on:
@@ -17,6 +17,9 @@ on:
         required: false
         type: string
         default: master
+
+permissions:
+  contents: write
 
 jobs:
   stage-and-jplag:
