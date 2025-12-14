@@ -120,7 +120,7 @@ jobs:
           ASSIGN: ${{ inputs.repo }}
         run: |
           java -jar ./lib/jplag.jar \
-            "submission/${ASSIGN}/${OWNER}" \
+            "submission/${ASSIGN}" \
             -l java \
             -r "results/${ASSIGN}-${OWNER}"
 
