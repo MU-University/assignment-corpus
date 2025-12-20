@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
-          ref: main
+          ref: master
 
       - name: Clone student repo (public)
         run: |
