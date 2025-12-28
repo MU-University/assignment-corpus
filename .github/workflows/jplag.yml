@@ -83,7 +83,7 @@ jobs:
       - name: Download JPlag
         if: ${{ steps.count.outputs.run_jplag == 'true' }}
         run: |
-          mkdir -p lib results
+          mkdir -p lib
           curl -L -o lib/jplag.jar https://github.com/jplag/JPlag/releases/download/v4.2.0/jplag-4.2.0-jar-with-dependencies.jar
 
       - name: Run JPlag on staged submission
