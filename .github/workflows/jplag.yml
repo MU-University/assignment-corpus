@@ -95,24 +95,14 @@ jobs:
           java -jar ./lib/jplag.jar \
             "submission/${ASSIGN}" \
             -l java \
-            -r "results/${ASSIGN}-${OWNER}"
+            -r "jplag-results-${OWNER}-${ASSIGN}"
 
       - name: Upload JPlag results
         if: ${{ steps.count.outputs.run_jplag == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: jplag-results-${{ inputs.owner }}-${{ inputs.repo }}
-          path: results
-
-      - name: Create downloadable archive
-        if: ${{ steps.count.outputs.run_jplag == 'true' }}
-        env:
-          OWNER: ${{ inputs.owner }}
-          ASSIGN: ${{ inputs.repo }}
-        run: |
-          cd results
-          zip -r "../jplag-results-${OWNER}-${ASSIGN}.zip" .
-          cd ..
+          path: jplag-results-${{ inputs.owner }}-${{ inputs.repo }}.zip
 
       - name: Create Release
         if: ${{ steps.count.outputs.run_jplag == 'true' }}
