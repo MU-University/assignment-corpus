@@ -83,7 +83,7 @@ jobs:
       - name: Download JPlag
         if: ${{ steps.count.outputs.run_jplag == 'true' }}
         run: |
-          mkdir -p lib results
+          mkdir -p lib
           curl -L -o lib/jplag.jar https://github.com/jplag/JPlag/releases/download/v4.2.0/jplag-4.2.0-jar-with-dependencies.jar
 
       - name: Run JPlag on staged submission
@@ -95,24 +95,14 @@ jobs:
           java -jar ./lib/jplag.jar \
             "submission/${ASSIGN}" \
             -l java \
-            -r "results/${ASSIGN}-${OWNER}"
+            -r "jplag-results-${OWNER}-${ASSIGN}"
 
       - name: Upload JPlag results
         if: ${{ steps.count.outputs.run_jplag == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: jplag-results-${{ inputs.owner }}-${{ inputs.repo }}
-          path: results
-
-      - name: Create downloadable archive
-        if: ${{ steps.count.outputs.run_jplag == 'true' }}
-        env:
-          OWNER: ${{ inputs.owner }}
-          ASSIGN: ${{ inputs.repo }}
-        run: |
-          cd results
-          zip -r "../jplag-results-${OWNER}-${ASSIGN}.zip" .
-          cd ..
+          path: jplag-results-${{ inputs.owner }}-${{ inputs.repo }}.zip
 
       - name: Create Release
         if: ${{ steps.count.outputs.run_jplag == 'true' }}
