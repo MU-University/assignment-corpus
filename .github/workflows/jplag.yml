@@ -103,3 +103,42 @@ jobs:
         with:
           name: jplag-results-${{ inputs.owner }}-${{ inputs.repo }}
           path: results
+
+      - name: Create downloadable archive
+        if: ${{ steps.count.outputs.run_jplag == 'true' }}
+        env:
+          OWNER: ${{ inputs.owner }}
+          ASSIGN: ${{ inputs.repo }}
+        run: |
+          cd results
+          zip -r "../jplag-results-${OWNER}-${ASSIGN}.zip" .
+          cd ..
+
+      - name: Create Release
+        if: ${{ steps.count.outputs.run_jplag == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ inputs.owner }}
+          ASSIGN: ${{ inputs.repo }}
+        run: |
+          TAG_NAME="jplag-${ASSIGN}-${OWNER}-$(date +%Y%m%d-%H%M%S)"
+          RELEASE_NAME="JPlag Results: ${ASSIGN}/${OWNER}"
+          
+          gh release create "${TAG_NAME}" \
+            "jplag-results-${OWNER}-${ASSIGN}.zip" \
+            --title "${RELEASE_NAME}" \
+            --notes "JPlag plagiarism detection results for ${ASSIGN}/${OWNER}
+          
+          **Direct Download Link (No CORS):**
+          This file can be downloaded directly from any service without authentication or CORS errors.
+          
+          - **Assignment:** ${ASSIGN}
+          - **Owner:** ${OWNER}
+          - **Generated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - **Run ID:** ${{ github.run_id }}
+          
+          Download the ZIP file from the assets section below or use the direct URL programmatically." \
+            --repo "${{ github.repository }}"
+          
+          echo "Release created successfully!"
+          echo "Download URL: https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/jplag-results-${OWNER}-${ASSIGN}.zip"
