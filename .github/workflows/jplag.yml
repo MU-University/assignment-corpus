@@ -3,8 +3,6 @@
 name: Submit Assignment (Corpus)
 
 on:
-  repository_dispatch:
-    types: [student-submission]
   workflow_dispatch:
     inputs:
       owner:
@@ -30,29 +28,14 @@ jobs:
   stage-and-jplag:
     runs-on: ubuntu-latest
     steps:
-      - name: Set variables from dispatch or manual input
-        id: vars
-        run: |
-          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-            echo "owner=${{ github.event.client_payload.owner }}" >> "$GITHUB_OUTPUT"
-            echo "repo=${{ github.event.client_payload.repo }}" >> "$GITHUB_OUTPUT"
-            echo "ref=${{ github.event.client_payload.ref }}" >> "$GITHUB_OUTPUT"
-            echo "assignment=${{ github.event.client_payload.assignment }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "owner=${{ inputs.owner }}" >> "$GITHUB_OUTPUT"
-            echo "repo=${{ inputs.repo }}" >> "$GITHUB_OUTPUT"
-            echo "ref=${{ inputs.ref }}" >> "$GITHUB_OUTPUT"
-            echo "assignment=${{ inputs.repo }}" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Notify JPlag Started
         run: |
           curl -X POST http://eshonkulov-asliddin.jprq.live/jplag \
             -H "Content-Type: application/json" \
             -d '{
-              "owner": "${{ steps.vars.outputs.owner }}",
-              "repo": "${{ steps.vars.outputs.repo }}",
-              "assignment": "${{ steps.vars.outputs.assignment }}",
+              "owner": "${{ inputs.owner }}",
+              "repo": "${{ inputs.repo }}",
+              "assignment": "${{ inputs.repo }}",
               "status": "started",
               "workflow_run_id": "${{ github.run_id }}",
               "workflow_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
@@ -63,17 +46,17 @@ jobs:
         with:
           persist-credentials: true
           ref: master
-steps.vars.outputs.assignment
+
       - name: Clone student repo (public)
         run: |
           set -e
-          git clone --depth=1 -b "${{ steps.vars.outputs.ref }}" "https://github.com/${{ steps.vars.outputs.owner }}/${{ steps.vars.outputs.repo }}.git" student
+          git clone --depth=1 -b "${{ inputs.ref }}" "https://github.com/${{ inputs.owner }}/${{ inputs.repo }}.git" student
           test -d "student/src/main/java"
 
       - name: Stage submission into corpus
         env:
-          OWNER: ${{ steps.vars.outputs.owner }}
-          ASSIGN: ${{ steps.vars.outputs.assignment }}
+          OWNER: ${{ inputs.owner }}
+          ASSIGN: ${{ inputs.repo }}
         run: |
           set -e
           mkdir -p "submission/${ASSIGN}/${OWNER}/src/main/java"
@@ -119,8 +102,8 @@ steps.vars.outputs.assignment
       - name: Run JPlag on staged submission
         if: ${{ steps.count.outputs.run_jplag == 'true' }}
         env:
-          OWNER: ${{ steps.vars.outputs.owner }}
-          ASSIGN: ${{ steps.vars.outputs.assignment }}
+          OWNER: ${{ inputs.owner }}
+          ASSIGN: ${{ inputs.repo }}
         run: |
           java -jar ./lib/jplag.jar \
             "submission/${ASSIGN}" \
@@ -131,7 +114,7 @@ steps.vars.outputs.assignment
         if: ${{ steps.count.outputs.run_jplag == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: jplag-results-${{ steps.vars.outputs.owner }}-${{ steps.vars.outputs.assignment }}
+          name: jplag-results-${{ inputs.owner }}-${{ inputs.repo }}
           path: results
 
       - name: Notify JPlag Completed
@@ -148,9 +131,9 @@ steps.vars.outputs.assignment
           curl -X POST http://eshonkulov-asliddin.jprq.live/jplag \
             -H "Content-Type: application/json" \
             -d '{
-              "owner": "${{ steps.vars.outputs.owner }}",
-              "repo": "${{ steps.vars.outputs.repo }}",
-              "assignment": "${{ steps.vars.outputs.assignment }}",
+              "owner": "${{ inputs.owner }}",
+              "repo": "${{ inputs.repo }}",
+              "assignment": "${{ inputs.repo }}",
               "status": "'"$STATUS"'",
               "jplag_ran": "${{ steps.count.outputs.run_jplag }}",
               "workflow_run_id": "${{ github.run_id }}",
