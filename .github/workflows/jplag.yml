@@ -20,27 +20,18 @@ on:
         required: false
         type: string
         default: master
+      attempt_id:
+        description: Attempt ID to map JPlag results
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
-  stage-and-jplag:
+  jplag:
     runs-on: ubuntu-latest
     steps:
-      - name: Notify JPlag Started
-        run: |
-          curl -X POST http://eshonkulov-asliddin.jprq.live/jplag \
-            -H "Content-Type: application/json" \
-            -d '{
-              "owner": "${{ inputs.owner }}",
-              "repo": "${{ inputs.repo }}",
-              "assignment": "${{ inputs.repo }}",
-              "status": "started",
-              "workflow_run_id": "${{ github.run_id }}",
-              "workflow_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }' || echo "Failed to notify start"
-
       - name: Checkout corpus
         uses: actions/checkout@v4
         with:
@@ -110,6 +101,35 @@ jobs:
             -l java \
             -r "results/${ASSIGN}-${OWNER}"
 
+      - name: Parse JPlag results
+        if: ${{ steps.count.outputs.run_jplag == 'true' }}
+        id: parse_results
+        env:
+          OWNER: ${{ inputs.owner }}
+          ASSIGN: ${{ inputs.repo }}
+        run: |
+          RESULTS_FILE="results/${ASSIGN}-${OWNER}/results.json"
+          
+          if [ -f "$RESULTS_FILE" ]; then
+            # Extract maximum similarity score for this student
+            MAX_SIMILARITY=$(jq -r --arg owner "$OWNER" '
+              .comparisons[] | 
+              select(.submission1 == $owner or .submission2 == $owner) | 
+              .similarity
+            ' "$RESULTS_FILE" | sort -rn | head -1)
+            
+            # If no similarity found, set to 0
+            if [ -z "$MAX_SIMILARITY" ] || [ "$MAX_SIMILARITY" = "null" ]; then
+              MAX_SIMILARITY="0.0"
+            fi
+            
+            echo "max_similarity=$MAX_SIMILARITY" >> "$GITHUB_OUTPUT"
+            echo "Student ${OWNER} max similarity: ${MAX_SIMILARITY}%"
+          else
+            echo "max_similarity=0.0" >> "$GITHUB_OUTPUT"
+            echo "Results file not found"
+          fi
+
       - name: Upload JPlag results
         if: ${{ steps.count.outputs.run_jplag == 'true' }}
         uses: actions/upload-artifact@v4
@@ -122,10 +142,13 @@ jobs:
         run: |
           if [ "${{ job.status }}" != "success" ]; then
             STATUS="failed"
+            SCORE="0.0"
           elif [ "${{ steps.count.outputs.run_jplag }}" = "true" ]; then
             STATUS="completed"
+            SCORE="${{ steps.parse_results.outputs.max_similarity }}"
           else
             STATUS="skipped"
+            SCORE="0.0"
           fi
           
           curl -X POST http://eshonkulov-asliddin.jprq.live/jplag \
@@ -134,8 +157,10 @@ jobs:
               "owner": "${{ inputs.owner }}",
               "repo": "${{ inputs.repo }}",
               "assignment": "${{ inputs.repo }}",
+              "attempt_id": "${{ inputs.attempt_id }}",
               "status": "'"$STATUS"'",
               "jplag_ran": "${{ steps.count.outputs.run_jplag }}",
+              "similarity_score": "'"$SCORE"'",
               "workflow_run_id": "${{ github.run_id }}",
               "workflow_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
               "results_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
