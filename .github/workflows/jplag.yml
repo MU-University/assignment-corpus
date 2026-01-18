@@ -157,11 +157,15 @@ jobs:
           if [ -f "$OVERVIEW_FILE" ]; then
             echo "Found overview.json, parsing..."
             
+            # Debug: Show what's in topComparisons
+            echo "Top comparisons from JPlag:"
+            jq '.metrics[0].topComparisons' "$OVERVIEW_FILE"
+            
             # JPlag's topComparisons are already sorted by highest similarity
-            # Just find the first comparison involving this student
+            # Match any comparison where either submission contains the owner name
             MAX_SIMILARITY=$(jq -r --arg owner "$OWNER" '
               .metrics[0].topComparisons[] | 
-              select(.first_submission == $owner or .second_submission == $owner) | 
+              select(.first_submission | contains($owner) or .second_submission | contains($owner)) | 
               .similarity | 
               select(. != null)
             ' "$OVERVIEW_FILE" | head -1)
