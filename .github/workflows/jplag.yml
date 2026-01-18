@@ -165,9 +165,8 @@ jobs:
             # Match any comparison where either submission contains the owner name
             MAX_SIMILARITY=$(jq -r --arg owner "$OWNER" '
               .metrics[0].topComparisons[] | 
-              select(.first_submission | contains($owner) or .second_submission | contains($owner)) | 
-              .similarity | 
-              select(. != null)
+              select((.first_submission | contains($owner)) or (.second_submission | contains($owner))) | 
+              .similarity
             ' "$OVERVIEW_FILE" | head -1)
             
             # If no similarity found, set to 0
