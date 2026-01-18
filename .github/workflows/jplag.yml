@@ -101,18 +101,22 @@ jobs:
           mkdir -p "jplag-new/${OWNER}"
           mkdir -p "jplag-old"
           
-          # Copy current student submission to new directory
-          cp -r "submission/${ASSIGN}/${OWNER}" "jplag-new/"
+          # Copy current student submission contents to new directory
+          cp -r "submission/${ASSIGN}/${OWNER}/"* "jplag-new/${OWNER}/"
           
-          # Copy all other submissions to old directory
+          # Copy all other submissions to old directory (copy directory structure)
           for dir in submission/${ASSIGN}/*; do
             if [ -d "$dir" ] && [ "$(basename "$dir")" != "${OWNER}" ]; then
-              cp -r "$dir" "jplag-old/"
+              owner_name=$(basename "$dir")
+              mkdir -p "jplag-old/${owner_name}"
+              cp -r "$dir/"* "jplag-old/${owner_name}/"
             fi
           done
           
-          echo "New submission: jplag-new/${OWNER}"
-          echo "Old submissions:"
+          echo "New submission structure:"
+          ls -la jplag-new/
+          ls -la "jplag-new/${OWNER}/" || true
+          echo "Old submissions structure:"
           ls -la jplag-old/
 
       - name: Run JPlag on staged submission
@@ -134,12 +138,21 @@ jobs:
           OWNER: ${{ inputs.owner }}
           ASSIGN: ${{ inputs.repo }}
         run: |
-          OVERVIEW_FILE="results/${ASSIGN}-${OWNER}/overview.json"
+          RESULTS_ZIP="results/${ASSIGN}-${OWNER}.zip"
+          RESULTS_DIR="results/${ASSIGN}-${OWNER}"
+          OVERVIEW_FILE="${RESULTS_DIR}/overview.json"
           
           # List files for debugging
           echo "Contents of results directory:"
           ls -la results/ || echo "No results directory"
-          ls -la "results/${ASSIGN}-${OWNER}/" || echo "No submission results directory"
+          
+          # Unzip the results if zip exists
+          if [ -f "$RESULTS_ZIP" ]; then
+            echo "Unzipping results..."
+            unzip -q "$RESULTS_ZIP" -d "$RESULTS_DIR"
+            echo "Extracted contents:"
+            ls -la "$RESULTS_DIR/" || echo "Failed to extract"
+          fi
           
           if [ -f "$OVERVIEW_FILE" ]; then
             echo "Found overview.json, parsing..."
