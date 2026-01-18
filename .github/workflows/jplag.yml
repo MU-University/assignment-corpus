@@ -86,8 +86,12 @@ jobs:
 
       - name: Download JPlag
         if: ${{ steps.count.outputs.run_jplag == 'true' }}
+        env:
+          OWNER: ${{ inputs.owner }}
+          ASSIGN: ${{ inputs.repo }}
+          ATTEMPT_ID: ${{ inputs.attempt_id }}
         run: |
-          mkdir -p lib results
+          mkdir -p lib "results/${ASSIGN}/${OWNER}"
           curl -L -o lib/jplag.jar https://github.com/jplag/JPlag/releases/download/v4.2.0/jplag-4.2.0-jar-with-dependencies.jar
 
       - name: Prepare JPlag directories
@@ -124,12 +128,13 @@ jobs:
         env:
           OWNER: ${{ inputs.owner }}
           ASSIGN: ${{ inputs.repo }}
+          ATTEMPT_ID: ${{ inputs.attempt_id }}
         run: |
           java -jar ./lib/jplag.jar \
             -new "jplag-new" \
             -old "jplag-old" \
             -l java \
-            -r "results/${ASSIGN}-${OWNER}"
+            -r "results/${ASSIGN}/${OWNER}/${ATTEMPT_ID}"
 
       - name: Parse JPlag results
         if: ${{ steps.count.outputs.run_jplag == 'true' }}
@@ -137,9 +142,10 @@ jobs:
         env:
           OWNER: ${{ inputs.owner }}
           ASSIGN: ${{ inputs.repo }}
+          ATTEMPT_ID: ${{ inputs.attempt_id }}
         run: |
-          RESULTS_ZIP="results/${ASSIGN}-${OWNER}.zip"
-          RESULTS_DIR="results/${ASSIGN}-${OWNER}"
+          RESULTS_ZIP="results/${ASSIGN}/${OWNER}/${ATTEMPT_ID}.zip"
+          RESULTS_DIR="results/${ASSIGN}/${OWNER}/${ATTEMPT_ID}"
           OVERVIEW_FILE="${RESULTS_DIR}/overview.json"
           
           # List files for debugging
@@ -182,6 +188,22 @@ jobs:
           else
             echo "max_similarity=0.0" >> "$GITHUB_OUTPUT"
             echo "Overview file not found at $OVERVIEW_FILE"
+          fi
+
+      - name: Commit JPlag results
+        if: ${{ steps.count.outputs.run_jplag == 'true' }}
+        env:
+          OWNER: ${{ inputs.owner }}
+          ASSIGN: ${{ inputs.repo }}
+          ATTEMPT_ID: ${{ inputs.attempt_id }}
+        run: |
+          set -e
+          git add "results/${ASSIGN}/${OWNER}/${ATTEMPT_ID}"
+          if ! git diff --cached --quiet; then
+            git commit -m "Add JPlag results for ${ASSIGN}/${OWNER} (attempt ${ATTEMPT_ID})"
+            git push
+          else
+            echo "No new results to commit."
           fi
 
       - name: Upload JPlag results
