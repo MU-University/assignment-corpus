@@ -90,6 +90,31 @@ jobs:
           mkdir -p lib results
           curl -L -o lib/jplag.jar https://github.com/jplag/JPlag/releases/download/v4.2.0/jplag-4.2.0-jar-with-dependencies.jar
 
+      - name: Prepare JPlag directories
+        if: ${{ steps.count.outputs.run_jplag == 'true' }}
+        env:
+          OWNER: ${{ inputs.owner }}
+          ASSIGN: ${{ inputs.repo }}
+        run: |
+          set -e
+          # Create separate directories for new and old submissions
+          mkdir -p "jplag-new/${OWNER}"
+          mkdir -p "jplag-old"
+          
+          # Copy current student submission to new directory
+          cp -r "submission/${ASSIGN}/${OWNER}" "jplag-new/"
+          
+          # Copy all other submissions to old directory
+          for dir in submission/${ASSIGN}/*; do
+            if [ -d "$dir" ] && [ "$(basename "$dir")" != "${OWNER}" ]; then
+              cp -r "$dir" "jplag-old/"
+            fi
+          done
+          
+          echo "New submission: jplag-new/${OWNER}"
+          echo "Old submissions:"
+          ls -la jplag-old/
+
       - name: Run JPlag on staged submission
         if: ${{ steps.count.outputs.run_jplag == 'true' }}
         env:
@@ -97,7 +122,8 @@ jobs:
           ASSIGN: ${{ inputs.repo }}
         run: |
           java -jar ./lib/jplag.jar \
-            "submission/${ASSIGN}" \
+            -new "jplag-new" \
+            -old "jplag-old" \
             -l java \
             -r "results/${ASSIGN}-${OWNER}"
 
@@ -108,26 +134,38 @@ jobs:
           OWNER: ${{ inputs.owner }}
           ASSIGN: ${{ inputs.repo }}
         run: |
-          RESULTS_FILE="results/${ASSIGN}-${OWNER}/results.json"
+          OVERVIEW_FILE="results/${ASSIGN}-${OWNER}/overview.json"
           
-          if [ -f "$RESULTS_FILE" ]; then
-            # Extract maximum similarity score for this student
+          # List files for debugging
+          echo "Contents of results directory:"
+          ls -la results/ || echo "No results directory"
+          ls -la "results/${ASSIGN}-${OWNER}/" || echo "No submission results directory"
+          
+          if [ -f "$OVERVIEW_FILE" ]; then
+            echo "Found overview.json, parsing..."
+            
+            # JPlag's topComparisons are already sorted by highest similarity
+            # Just find the first comparison involving this student
             MAX_SIMILARITY=$(jq -r --arg owner "$OWNER" '
-              .comparisons[] | 
-              select(.submission1 == $owner or .submission2 == $owner) | 
-              .similarity
-            ' "$RESULTS_FILE" | sort -rn | head -1)
+              .metrics[0].topComparisons[] | 
+              select(.first_submission == $owner or .second_submission == $owner) | 
+              .similarity | 
+              select(. != null)
+            ' "$OVERVIEW_FILE" | head -1)
             
             # If no similarity found, set to 0
             if [ -z "$MAX_SIMILARITY" ] || [ "$MAX_SIMILARITY" = "null" ]; then
               MAX_SIMILARITY="0.0"
+            else
+              # Convert to percentage (multiply by 100) and round to 2 decimals
+              MAX_SIMILARITY=$(printf "%.2f" $(echo "$MAX_SIMILARITY * 100" | bc -l))
             fi
             
             echo "max_similarity=$MAX_SIMILARITY" >> "$GITHUB_OUTPUT"
             echo "Student ${OWNER} max similarity: ${MAX_SIMILARITY}%"
           else
             echo "max_similarity=0.0" >> "$GITHUB_OUTPUT"
-            echo "Results file not found"
+            echo "Overview file not found at $OVERVIEW_FILE"
           fi
 
       - name: Upload JPlag results
