@@ -223,7 +223,8 @@ jobs:
             STATUS="completed"
             SCORE="${{ steps.parse_results.outputs.max_similarity }}"
           else
-            STATUS="skipped"
+            # First submission - mark as completed with 0% similarity
+            STATUS="completed"
             SCORE="0.0"
           fi
           
